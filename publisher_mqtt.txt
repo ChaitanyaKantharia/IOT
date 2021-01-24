@@ -1,0 +1,52 @@
+MQTT-SUBSCRIBER.py:
+
+
+import paho.mqtt.client as mqtt 
+import time
+import sqlite3
+
+connection = sqlite3.connect('sensor.db')
+
+def on_connect(client, userdata, flags, resultCode): 
+	print('Connected with client')
+	client.subscribe('mscit/testing1')
+	table_cursor = connection.cursor() 
+	table_cursor.execute('''CREATE TABLE IF NOT EXISTS PubilshMsgs(Msg_ID INTEGER PRIMARY KEY AUTOINCREMENT,Payload TEXT,LOGTIMESTAMP TIMESTAMP DEFAULT CURRENT_TIMESTAMP)''')
+	def on_message(client, userdata, message):
+		payload_data = message.payload.decode('UTF-8') 
+		record_cursor = connection.cursor()
+		record_cursor.execute("INSERT INTO PubilshMsgs(Payload) VALUES('"+str(payload_data)+"');")
+		connection.commit()
+		print(payload_data)
+		rows_cursor = connection.cursor()
+		rows_cursor.execute("SELECT * FROM PubilshMsgs ORDER BY Msg_ID ASC LIMIT 10")
+		records = rows_cursor.fetchall()
+
+		for rows_ in records: 
+			print(rows_)
+	client = mqtt.Client()
+	client.on_connect = on_connect 
+	client.on_message = on_message 
+	client.connect('broker.emqx.io', 1883, 60); 
+	client.loop_forever()
+ 
+/////////////////
+MQTT-Publisher.py:
+//////////////////
+
+import paho.mqtt.client as mqtt import time
+def on_connect(client, userdata, flags, resultCode):
+	print('Client is connnected')
+
+client = mqtt.Client() 
+client.on_connect = on_connect
+client.connect('broker.emqx.io', 1883, 60);
+
+while True:
+	msg = "Welcome to VNSGU, Roll no. 33 Parth Asodariya" 
+	payload = str(msg)
+	print('send data to client successfully')
+	client.publish('mscit/testing1', payload= payload, qos = 0, retain=False) 
+	time.sleep(1)
+
+client.loop_forever()
